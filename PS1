@@ -1,0 +1,183 @@
+#Problem set 1
+
+#set working directory
+setwd("C:/Users/rodgo/Desktop/PhD/Ramos/SOC 754/ps1")
+
+# install packages and load libraries
+install.packages("tidyverse")
+install.packages("LifeTables")
+
+library(tidyverse)
+library(LifeTables)
+
+# import .csv each variable as numeric type
+
+ps1 <- read.csv("ps1_data_F2023.csv", header = TRUE)
+
+# Extract variables for the data frame because I like more each variable as a vector
+
+x <- ps1 %>% select(x)
+nNx <- ps1 %>% select(nNx)
+nDx <- ps1 %>% select(nDx)
+nax <- ps1 %>% select(nax)
+
+# These vectors are in list format, they should be atomic vectors
+
+nax <- unlist(nax)
+nDx <- unlist(nDx)
+nNx <- unlist(nNx)
+x <- unlist(x)
+
+
+# Vectors contain characters "", to clean the data and transform to numeric:
+
+nNx <- as.numeric(str_replace_all(nNx, "[^0-9.]", ""))
+nDx <- as.numeric(str_replace_all(nDx, "[^0-9.]", ""))
+nax <- as.numeric(str_replace_all(nax, "[^0-9.]", ""))
+x <- as.numeric(str_replace_all(x, "[^0-9.]", ""))
+
+
+
+# Create a n vector (lenght of age interval):
+
+n <- c(1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)
+
+# Create another vector to use it for looping
+
+y <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+
+# calculations:
+
+nmx <- (nDx/nNx)
+nqx <- (n * nmx) / (1 + (n - nax) * (nmx))
+
+# I set nqx for the open eneded interval = 1
+nqx[length(nqx)] <- 1
+npx <- 1 - nqx
+
+
+#lx
+#First define the radix as an independent vector
+
+lx_radix <- 100000
+
+#Create an empty vector for lx and paste the radix in it
+lx <- numeric(length(npx))
+lx [1] <- lx_radix
+
+#Loop to calculate lx, lenghth(npx) - 1 because lx use subsequent values
+#If don't do that, the code will create an extra row after the open ended interval
+#I use vector y to loop because this function modifies vector x and I don't want that
+
+for (y in 1:(length(npx)- 1)) {
+  lx[y + 1] <- npx[y] * lx[y]
+}
+
+#ndx
+ndx <- lx - c(lx[-1], 0)
+
+
+# nLx: first create vector
+nLx <- numeric(length(lx))
+
+# Calculate nLx for each age x
+for (y in 1:(length(lx)- 1)) {
+  nLx[y] <- (n[y] * lx[y + 1]) + (nax[y] * ndx[y])
+}
+
+#nLx open ended interval
+nLx[length(nLx)] <- lx[length(lx)] / nmx[length(nmx)]
+
+#Tx
+Tx <- numeric(length(nLx))
+
+for (y in 1:length(nLx)) {
+  Tx[y] <- sum(nLx[y:length(nLx)])
+}
+
+#ex
+ex <- Tx/lx
+
+# merge al vectors in a data frame to check everything is running
+merged_df <- cbind(x, nNx,ndx, nmx, nax, nqx, npx, lx, nLx, Tx, ex)
+df <- as.data.frame(merged_df)
+
+
+# Answers
+
+#b) b. Graph the following life table functions using either plot() or ggplot():
+#lx; ndx; and nmx. What do you observe?
+  
+#plot lx
+lx_plot <- ggplot(data = df, aes(x = x, y = lx)) +
+  geom_line() +
+  labs(title = "lx by Age", x = "Age", y = "lx") +
+geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") + 
+  theme_minimal() 
+ggsave(filename = "lx.pdf", plot = lx_plot, width = 6, height = 4, dpi = 300)
+
+
+#plot ndx
+ndx_plot <- ggplot(data = df, aes(x = x, y = ndx)) +
+  geom_line() +
+  labs(title = "ndx by Age", x = "Age", y = "ndx") +
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") + 
+  theme_minimal() 
+ggsave(filename = "ndx.pdf", plot = ndx_plot, width = 6, height = 4, dpi = 300)
+
+
+#plot nmx
+nmx_plot <- ggplot(data = df, aes(x = x, y = nmx)) +
+  geom_line() +
+  labs(title = "nmx by Age", x = "Age", y = "nmx") +
+geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "black", linetype = "dashed") + 
+  theme_minimal() 
+ggsave(filename = "nmx.pdf", plot = nmx_plot, width = 6, height = 4, dpi = 300)
+
+#c. What was life expectancy at age 40? How would you interpret this number?
+# A: 34.12 years. This is the number of additional years that those who survived
+# age 40 are expected to live. 
+age40_ex <- ex[x == 40]
+
+
+#d. What was the probability of surviving from birth to age 30?
+# A: The probability is l30/l0 = 0.9652 for French males in 1985.
+
+ps30 <- (lx[x == 30] / lx[x == 0])
+
+
+#e. What was the probability of surviving to age 65 for those who survived to age 30?
+#A: The probability is l65/l30 = 0.7534 for French males in 1985.
+
+ps65 <- (lx[x == 65] / lx[x == 30])
+
+
+#f. What was the probability that a newborn would die between 50 and 55?
+#A: The probability is (l50 - l55)/l0 = 0.0412
+
+pd50 <- (lx[x == 50] - lx[x == 55]) / lx[x == 0]
+  
+#g. How many years could a newborn expect to live in the interval 15-65?
+#A: A male newborn is expected to live (T15 - T65)/l0 = 45.9171 years in the interval 15-65.
+
+Nl15_65 <- (Tx[x == 15] - Tx[x == 65]) / lx[x == 0]
+
+
+# i. If the French population were stationary, what would be the crude death rate?
+#A: Assuming a stationary population, the crude death rate for the male French population in 1985 
+#is (1/e0)*1000 = 14.02 deaths per 1,000 population. 
+
+CDR <- 1/ex[x == 0]*1000
+
+# Extra credit. Lifetables package: there are difference, I do not get e for the open ended interval
+
+lt.mx(nmx,sex="male",age=c(0,1,seq(5,85,5)), nax = nax)
+
+# now using nad=NULL
+lt.mx(nmx,sex="male",age=c(0,1,seq(5,85,5)), nax = NULL)
+
+  
+  
