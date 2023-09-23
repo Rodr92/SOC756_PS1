@@ -172,11 +172,11 @@ Nl15_65 <- (Tx[x == 15] - Tx[x == 65]) / lx[x == 0]
 
 CDR <- 1/ex[x == 0]*1000
 
-# Extra credit. Lifetables package: there are difference, I do not get e for the open ended interval
+# Extra credit. Lifetables package: there are differences, I do not get e for the open-ended interval
 
 lt.mx(nmx,sex="male",age=c(0,1,seq(5,85,5)), nax = nax)
 
-# now using nad=NULL
+# now using nax=NULL
 lt.mx(nmx,sex="male",age=c(0,1,seq(5,85,5)), nax = NULL)
 
   
